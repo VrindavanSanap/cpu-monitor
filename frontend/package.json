@@ -10,8 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "firebase": "^12.11.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "uplot": "^1.6.32"
   },
   "devDependencies": {
     "@types/react": "^18.2.15",
