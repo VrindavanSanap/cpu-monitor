@@ -41,7 +41,7 @@ func NewDBClient(ctx context.Context) (*db.Client, error) {
 // StoreCPUUtilisation writes a CPUUtilisation sample under
 // cpu_util_samples/<YYYY-MM-DD-HH>/<unix-ms>.
 func StoreCPUUtilisation(ctx context.Context, client *db.Client, sample CPUUtilisation) error {
-	now := time.Now()
+	now := time.Now().UTC()
 	hourBucket := now.Format("2006-01-02-15")
 	key := fmt.Sprintf("cpu_util_samples/%s/%d", hourBucket, now.UnixMilli())
 
