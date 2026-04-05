@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"firebase.google.com/go/v4/db"
 	"github.com/joho/godotenv"
 	"github.com/shirou/gopsutil/v4/cpu"
 )
@@ -38,20 +37,15 @@ func main() {
 		cancel()
 	}()
 
-	// Create DB client
-	db, err := NewDBClient(ctx)
-	if err != nil {
-		slog.Error("Failed to create DB client", "error", err)
-		os.Exit(1)
-	}
-	// defer db.Close() // make sure your DBClient has a Close method
+	// Create API client
+	apiClient := NewAPIClient()
 
 	// Configurable interval (default 1s)
 	interval := 1 * time.Second
 
 	slog.Info("Starting CPU monitor", "interval", interval)
 
-	if err := runCPUWorker(ctx, db, interval); err != nil && err != context.Canceled {
+	if err := runCPUWorker(ctx, apiClient, interval); err != nil && err != context.Canceled {
 		slog.Error("CPU worker stopped with error", "error", err)
 		os.Exit(1)
 	}
@@ -60,7 +54,7 @@ func main() {
 }
 
 // runCPUWorker contains the actual monitoring loop
-func runCPUWorker(ctx context.Context, dbClient *db.Client, interval time.Duration) error {
+func runCPUWorker(ctx context.Context, dbClient *APIClient, interval time.Duration) error {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
