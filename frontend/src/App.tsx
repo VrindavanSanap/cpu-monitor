@@ -1,23 +1,11 @@
-import { useEffect, useState } from 'react'
 import { useCpuHistory } from './hooks/useCpuHistory'
 import CpuChart from './components/CpuChart'
 import './App.css'
 
 const MAX_POINTS = 60
-const LIVE_THRESHOLD_MS = 2000
 
 export default function App() {
-  const { cpu, history, loading, error, lastUpdated } = useCpuHistory(MAX_POINTS)
-  const [now, setNow] = useState(Date.now())
-
-  // Force re-render every second so the live status can transition to offline
-  // if no new data arrives.
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const isLive = lastUpdated !== null && now - lastUpdated < LIVE_THRESHOLD_MS
+  const { cpu, history, loading, error, isLive } = useCpuHistory(MAX_POINTS)
 
   return (
     <div className="app-shell">
@@ -30,11 +18,12 @@ export default function App() {
       )}
 
       <div className="cpu-row">
-        <p className="cpu-value" aria-live="polite">
+        <p className="cpu-value">
           {loading ? '…' : cpu !== null ? `${cpu.toFixed(1)}%` : '—'}
         </p>
-        <div 
+        <div
           className={`status-indicator ${isLive ? 'live' : 'offline'}`}
+          aria-live="polite"
           aria-label={isLive ? 'Status: Live' : 'Status: Offline'}
         >
           <span className="dot" />
@@ -42,7 +31,7 @@ export default function App() {
         </div>
       </div>
 
-      <p className="idle-value" aria-live="polite">
+      <p className="idle-value">
         Idle:&nbsp;
         {loading ? '…' : cpu !== null ? `${(100 - cpu).toFixed(1)}%` : '—'}
       </p>

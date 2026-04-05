@@ -16,4 +16,6 @@ export interface CpuHistory {
   error: Error | null
   /** null if no data is available, otherwise the timestamp of the last point */
   lastUpdated: number | null
+  /** true when data was received within the last LIVE_THRESHOLD_MS */
+  isLive: boolean
 }
