@@ -1,13 +1,8 @@
-/** A single CPU utilisation sample stored in Firebase. */
+/** A single CPU utilisation sample. */
 export interface DataPoint {
-  /** Unix-ms timestamp (the Firebase key, converted to number). */
+  /** Unix-ms timestamp. */
   ts: number
   /** CPU utilisation percentage, 0–100. */
-  v: number
-}
-
-/** Raw shape of a single sample as stored in Firebase. */
-export interface RawSample {
   v: number
 }
 

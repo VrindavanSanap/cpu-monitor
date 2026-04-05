@@ -26,8 +26,6 @@ export function useCpuHistory(maxPoints: number = DEFAULT_MAX_POINTS): CpuHistor
         ? [...prevPoints.slice(-needed), ...currentPoints]
         : currentPoints
 
-    // Sort is O(n log n) but n ≤ 120, negligible; ensures correct order even
-    // if Firebase returns keys out of order in edge cases.
     return [...merged].sort((a, b) => a.ts - b.ts)
   }, [currentPoints, prevPoints, maxPoints])
 
