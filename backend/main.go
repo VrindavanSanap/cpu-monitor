@@ -1,95 +1,60 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"log/slog"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
+	"database/sql"
+	"encoding/json"
+	"log"
+	"net/http"
 
-	"firebase.google.com/go/v4/db"
-	"github.com/joho/godotenv"
-	"github.com/shirou/gopsutil/v4/cpu"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-type CPUUtilisation struct {
-	Val float64 `json:"v"`
+type Response struct {
+	Message string `json:"message"`
+	Status  string `json:"status"`
 }
 
 func main() {
-	// Load .env (non-fatal)
-	if err := godotenv.Load(); err != nil {
-		slog.Info("No .env file found, relying on environment variables")
-	}
-
-	// Create context that can be cancelled on OS signals
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Setup graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		<-sigChan
-		slog.Info("Shutdown signal received, stopping...")
-		cancel()
-	}()
-
-	// Create DB client
-	db, err := NewDBClient(ctx)
+	// Initialize SQLite Database
+	db, err := sql.Open("sqlite3", "./app.db")
 	if err != nil {
-		slog.Error("Failed to create DB client", "error", err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
-	// defer db.Close() // make sure your DBClient has a Close method
+	defer db.Close()
 
-	// Configurable interval (default 1s)
-	interval := 1 * time.Second
-
-	slog.Info("Starting CPU monitor", "interval", interval)
-
-	if err := runCPUWorker(ctx, db, interval); err != nil && err != context.Canceled {
-		slog.Error("CPU worker stopped with error", "error", err)
-		os.Exit(1)
+	// Create a simple table
+	sqlStmt := `
+	CREATE TABLE IF NOT EXISTS requests (id INTEGER NOT NULL PRIMARY KEY, ip TEXT);
+	`
+	_, err = db.Exec(sqlStmt)
+	if err != nil {
+		log.Printf("%q: %s\n", err, sqlStmt)
+		return
 	}
 
-	slog.Info("CPU monitor stopped cleanly")
-}
-
-// runCPUWorker contains the actual monitoring loop
-func runCPUWorker(ctx context.Context, dbClient *db.Client, interval time.Duration) error {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
-			percent, err := cpu.Percent(0, false)
-			if err != nil {
-				slog.Error("Failed to read CPU percent", "error", err)
-				continue // don't stop the whole service on a single bad read
-			}
-
-			if len(percent) == 0 {
-				slog.Warn("cpu.Percent returned no values")
-				continue
-			}
-
-			util := CPUUtilisation{Val: percent[0]}
-
-			if err := StoreCPUUtilisation(ctx, dbClient, util); err != nil {
-				slog.Error("Failed to store CPU utilisation", "value", util.Val, "error", err)
-				// continue anyway — we don't want one DB hiccup to kill the monitor
-			} else {
-				slog.Info("Stored CPU utilisation",
-					"percent", fmt.Sprintf("%.2f%%", util.Val),
-				)
-			}
+	http.HandleFunc("/api/hello", func(w http.ResponseWriter, r *http.Request) {
+		// Log the incoming request to SQLite
+		_, err = db.Exec("INSERT INTO requests(ip) VALUES(?)", r.RemoteAddr)
+		if err != nil {
+			log.Printf("Error inserting into DB: %v", err)
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
 		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(Response{
+			Message: "Hello from Go HTTPS API with SQLite! Created by vrindavan",
+			Status:  "success",
+		})
+	})
+
+	log.Println("Starting HTTPS server on https://localhost:8443 )")
+	
+	// Start HTTPS server using TLS certificates
+	// You can generate local self-signed certs via:
+	// go run $(go env GOROOT)/src/crypto/tls/generate_cert.go --host localhost
+	err = http.ListenAndServe(":8443", nil)
+	if err != nil {
+		log.Fatal("ListenAndServeTLS error: ", err)
 	}
 }
