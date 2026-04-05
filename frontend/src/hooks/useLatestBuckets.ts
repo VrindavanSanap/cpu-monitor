@@ -8,38 +8,45 @@ interface UseLatestBucketsResult {
   error: Error | null
 }
 
-const MAX_POINTS = 60
-const TICK_MS = 1000
+const POLL_MS = 1000
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8443'
 
-function randomCpu(): number {
-  return Math.round(Math.random() * 60 + 10) // 10–70 %
+interface CPUDataPoint {
+  utilization: number
+  timestamp: string
 }
 
-function generateInitialPoints(count: number): DataPoint[] {
-  const now = Date.now()
-  const points: DataPoint[] = []
-  for (let i = count - 1; i >= 0; i--) {
-    points.push({ ts: now - i * TICK_MS, v: randomCpu() })
-  }
-  return points
+function toDataPoint(d: CPUDataPoint): DataPoint {
+  return { ts: new Date(d.timestamp).getTime(), v: d.utilization }
 }
 
-export function useLatestBuckets(maxPoints: number): UseLatestBucketsResult {
-  const [currentPoints, setCurrentPoints] = useState<DataPoint[]>(() =>
-    generateInitialPoints(Math.min(maxPoints, MAX_POINTS)),
-  )
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+export function useLatestBuckets(_maxPoints: number): UseLatestBucketsResult {
+  const [currentPoints, setCurrentPoints] = useState<DataPoint[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      const point: DataPoint = { ts: Date.now(), v: randomCpu() }
-      setCurrentPoints((prev) => [...prev.slice(-(maxPoints - 1)), point])
-    }, TICK_MS)
-
-    return () => {
-      if (intervalRef.current !== null) clearInterval(intervalRef.current)
+    async function poll() {
+      try {
+        const res = await fetch(`${API_BASE}/api/cpu`)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const raw: CPUDataPoint[] = await res.json()
+        setCurrentPoints(raw.map(toDataPoint))
+        setError(null)
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error(String(err)))
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [maxPoints])
 
-  return { currentPoints, prevPoints: [], loading: false, error: null }
+    poll()
+    timerRef.current = setInterval(poll, POLL_MS)
+    return () => {
+      if (timerRef.current !== null) clearInterval(timerRef.current)
+    }
+  }, [])
+
+  return { currentPoints, prevPoints: [], loading, error }
 }
