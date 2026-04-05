@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -24,7 +25,12 @@ func main() {
 		log.Fatalf("migrate: %v", err)
 	}
 
-	srv := &server{db: db, buf: &ringBuffer{}}
+	apiKey := os.Getenv("API_KEY")
+	if apiKey == "" {
+		log.Fatal("API_KEY environment variable is not set")
+	}
+
+	srv := &server{db: db, buf: &ringBuffer{}, apiKey: apiKey}
 
 	log.Printf("Listening on %s", addr)
 	if err := http.ListenAndServe(addr, srv.routes()); err != nil {

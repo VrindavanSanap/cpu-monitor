@@ -8,8 +8,9 @@ import (
 )
 
 type server struct {
-	db  *sql.DB
-	buf *ringBuffer
+	db     *sql.DB
+	buf    *ringBuffer
+	apiKey string
 }
 
 type Response struct {
@@ -56,6 +57,11 @@ func (s *server) handleCPU(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) postCPU(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("X-API-Key") != s.apiKey {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	var data CPUData
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)

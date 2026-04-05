@@ -12,18 +12,24 @@ import (
 
 type APIClient struct {
 	baseURL    string
+	apiKey     string
 	httpClient *http.Client
 }
 
 // NewAPIClient creates an HTTP client pointed at the backend.
-// Reads BACKEND_URL from the environment; defaults to http://localhost:8443.
+// Reads BACKEND_URL and API_KEY from the environment.
 func NewAPIClient() *APIClient {
 	baseURL := os.Getenv("BACKEND_URL")
 	if baseURL == "" {
 		baseURL = "http://localhost:8443"
 	}
+	apiKey := os.Getenv("API_KEY")
+	if apiKey == "" {
+		panic("API_KEY environment variable is not set")
+	}
 	return &APIClient{
 		baseURL:    baseURL,
+		apiKey:     apiKey,
 		httpClient: &http.Client{Timeout: 5 * time.Second},
 	}
 }
@@ -48,6 +54,7 @@ func StoreCPUUtilisation(ctx context.Context, client *APIClient, sample CPUUtili
 		return fmt.Errorf("creating request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", client.apiKey)
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
