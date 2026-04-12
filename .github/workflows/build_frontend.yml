@@ -1,18 +1,26 @@
-name; Build Frontend
+name: Build Frontend
 
 on:
   push:
     branches: [main]
-
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      -name build frontend using bun
-      run: |
-        cd frontend
-        bun install
-        bun run build
+      # Required to actually pull your code into the runner
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
+      # Required if Bun is not pre-installed on the runner
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: build frontend using bun
+        run: |
+          cd frontend
+          bun install
+          bun run build
