@@ -104,7 +104,7 @@ React dashboard that polls the backend every second and renders a live 60-second
 ### Prerequisites
 
 - Go 1.21+
-- Node.js 18+
+- Bun 1.0+
 
 ### 1. Backend
 
@@ -124,8 +124,8 @@ API_KEY=your-secret go run .
 
 ```bash
 cd frontend
-npm install
-VITE_API_BASE_URL=http://localhost:8443 npm run dev
+bun install
+VITE_API_BASE_URL=http://localhost:8443 bun run dev
 ```
 
 Open `http://localhost:5173`.
