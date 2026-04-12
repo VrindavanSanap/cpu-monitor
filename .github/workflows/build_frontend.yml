@@ -22,6 +22,7 @@ jobs:
       - name: build frontend using bun
         run: |
           cd frontend
+          echo "VITE_API_BASE_URL=${{ secrets.BASE_URL }}" > .env
           bun install
           bun run build
         
