@@ -31,11 +31,16 @@ jobs:
         
       - name: Deploy and Restart Backend
         run: |
-          # 1. Stop the running service to release the file lock
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "sudo systemctl stop cpu-monitor"
+          # 1. Stop the service (the '|| true' prevents pipeline crashes on the very first run)
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "sudo systemctl stop cpu-monitor || true"
           
-          # 2. Upload the newly compiled binary
-          scp backend/cpu-monitor ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/opt/cpu-monitor/cpu-monitor
+          # 2. Upload the newly compiled binary to the server's temporary directory
+          scp backend/cpu-monitor ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/tmp/cpu-monitor-binary
           
-          # 3. Start the service back up
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "sudo systemctl start cpu-monitor"
+          # 3. Move the binary, set permissions, and restart the service via a multi-line SSH block
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            sudo mkdir -p /opt/cpu-monitor
+            sudo mv /tmp/cpu-monitor-binary /opt/cpu-monitor/cpu-monitor
+            sudo chmod +x /opt/cpu-monitor/cpu-monitor
+            sudo systemctl start cpu-monitor
+          EOF
