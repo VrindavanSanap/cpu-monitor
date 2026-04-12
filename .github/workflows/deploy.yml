@@ -28,4 +28,5 @@ jobs:
             echo "--- Server Output ---"
             cat /tmp/github-test/hello.txt
             echo "---------------------"
+
           EOF
