@@ -42,5 +42,7 @@ jobs:
             sudo mkdir -p /opt/cpu-monitor
             sudo mv /tmp/cpu-monitor-binary /opt/cpu-monitor/cpu-monitor
             sudo chmod +x /opt/cpu-monitor/cpu-monitor
+            echo "API_KEY=${{ secrets.API_KEY }}" | sudo tee /opt/cpu-monitor/.env > /dev/null
+            sudo chmod 600 /opt/cpu-monitor/.env
             sudo systemctl start cpu-monitor
           EOF

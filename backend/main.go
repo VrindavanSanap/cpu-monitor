@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/joho/godotenv"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -15,6 +16,10 @@ const (
 )
 
 func main() {
+	// Load .env file if present (silently ignored if not found)
+	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+		log.Printf("warning: could not load .env file: %v", err)
+	}
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		log.Fatalf("open db: %v", err)
