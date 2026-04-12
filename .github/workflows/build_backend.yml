@@ -1,0 +1,41 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.1
+
+      - name: Build backend using Go
+        run: |
+          cd backend
+          go build -o cpu-monitor
+        
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+        
+      - name: Deploy and Restart Backend
+        run: |
+          # 1. Stop the running service to release the file lock
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "sudo systemctl stop cpu-monitor"
+          
+          # 2. Upload the newly compiled binary
+          scp backend/cpu-monitor ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/opt/cpu-monitor/cpu-monitor
+          
+          # 3. Start the service back up
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} "sudo systemctl start cpu-monitor"
