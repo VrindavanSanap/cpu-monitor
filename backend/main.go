@@ -1,95 +1,54 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"log/slog"
+	"database/sql"
+	"log"
+	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
-	"firebase.google.com/go/v4/db"
-	"github.com/joho/godotenv"
-	"github.com/shirou/gopsutil/v4/cpu"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-type CPUUtilisation struct {
-	Val float64 `json:"v"`
-}
+const (
+	addr   = ":8443"
+	dbPath = "./app.db"
+)
 
 func main() {
-	// Load .env (non-fatal)
-	if err := godotenv.Load(); err != nil {
-		slog.Info("No .env file found, relying on environment variables")
-	}
-
-	// Create context that can be cancelled on OS signals
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Setup graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		<-sigChan
-		slog.Info("Shutdown signal received, stopping...")
-		cancel()
-	}()
-
-	// Create DB client
-	db, err := NewDBClient(ctx)
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		slog.Error("Failed to create DB client", "error", err)
-		os.Exit(1)
+		log.Fatalf("open db: %v", err)
 	}
-	// defer db.Close() // make sure your DBClient has a Close method
+	defer db.Close()
 
-	// Configurable interval (default 1s)
-	interval := 1 * time.Second
-
-	slog.Info("Starting CPU monitor", "interval", interval)
-
-	if err := runCPUWorker(ctx, db, interval); err != nil && err != context.Canceled {
-		slog.Error("CPU worker stopped with error", "error", err)
-		os.Exit(1)
+	if err := migrate(db); err != nil {
+		log.Fatalf("migrate: %v", err)
 	}
 
-	slog.Info("CPU monitor stopped cleanly")
+	apiKey := os.Getenv("API_KEY")
+	if apiKey == "" {
+		log.Fatal("API_KEY environment variable is not set")
+	}
+
+	srv := &server{db: db, buf: &ringBuffer{}, apiKey: apiKey}
+
+	log.Printf("Listening on %s", addr)
+	if err := http.ListenAndServe(addr, srv.routes()); err != nil {
+		log.Fatalf("listen: %v", err)
+	}
 }
 
-// runCPUWorker contains the actual monitoring loop
-func runCPUWorker(ctx context.Context, dbClient *db.Client, interval time.Duration) error {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
-			percent, err := cpu.Percent(0, false)
-			if err != nil {
-				slog.Error("Failed to read CPU percent", "error", err)
-				continue // don't stop the whole service on a single bad read
-			}
-
-			if len(percent) == 0 {
-				slog.Warn("cpu.Percent returned no values")
-				continue
-			}
-
-			util := CPUUtilisation{Val: percent[0]}
-
-			if err := StoreCPUUtilisation(ctx, dbClient, util); err != nil {
-				slog.Error("Failed to store CPU utilisation", "value", util.Val, "error", err)
-				// continue anyway — we don't want one DB hiccup to kill the monitor
-			} else {
-				slog.Info("Stored CPU utilisation",
-					"percent", fmt.Sprintf("%.2f%%", util.Val),
-				)
-			}
-		}
-	}
+func migrate(db *sql.DB) error {
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS requests (
+			id          INTEGER NOT NULL PRIMARY KEY,
+			ip          TEXT
+		);
+		CREATE TABLE IF NOT EXISTS cpu_data (
+			id          INTEGER NOT NULL PRIMARY KEY,
+			utilization REAL,
+			timestamp   TEXT
+		);
+	`)
+	return err
 }

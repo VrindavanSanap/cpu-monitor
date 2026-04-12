@@ -14,6 +14,8 @@ interface CpuChartProps {
  * xScale uses 'time' with Date objects — passing raw ms integers directly
  * causes visx to treat them as linear numbers, breaking tick formatting.
  */
+const WINDOW_MS = 60_000
+
 const CpuChart = React.memo(function CpuChart({ history }: CpuChartProps) {
   // Convert ts (ms) → Date once, memoised alongside history.
   const chartData = useMemo(
@@ -28,6 +30,12 @@ const CpuChart = React.memo(function CpuChart({ history }: CpuChartProps) {
 
   const accessors = useMemo(() => ({ xAccessor, yAccessor }), [xAccessor, yAccessor])
 
+  // Fixed 60-second window anchored to now, so the axis never shrinks.
+  const xDomain = useMemo(() => {
+    const now = Date.now()
+    return [new Date(now - WINDOW_MS), new Date(now)]
+  }, [history]) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (chartData.length < 2) return null
 
   return (
@@ -36,7 +44,7 @@ const CpuChart = React.memo(function CpuChart({ history }: CpuChartProps) {
         height={200}
         width={600}
         margin={{ top: 10, right: 20, bottom: 40, left: 60 }}
-        xScale={{ type: 'time' }}
+        xScale={{ type: 'time', domain: xDomain }}
         yScale={{ type: 'linear', domain: [0, 100] }}
       >
         <Grid columns={false} numTicks={4} stroke="rgba(255,255,255,0.08)" />

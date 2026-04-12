@@ -33,15 +33,18 @@
   line-height: 1;
   color: #f1f5f9;
   margin: 0;
-  /* prevent layout shift while loading */
-  min-width: 8rem;
-  text-align: center;
+  width: 6ch;
+  text-align: right;
+  display: inline-block;
 }
 
 .idle-value {
   font-size: 1.25rem;
   color: #64748b;
   margin: 0 0 0.75rem;
+  width: 6ch;
+  text-align: right;
+  display: inline-block;
 }
 
 /* ─── Status Indicator ────────────────────────────────────────────────────── */

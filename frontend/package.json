@@ -6,12 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "deploy": "vite build && ./build.sh",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
   "dependencies": {
     "@visx/xychart": "^3.12.0",
-    "firebase": "^12.11.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-spring": "^10.0.3"
