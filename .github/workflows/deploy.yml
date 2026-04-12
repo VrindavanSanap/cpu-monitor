@@ -1,5 +1,31 @@
-name: Production Deployment
+name: Test SSH Connection
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch: # This allows you to run it manually from the Actions tab
+
+jobs:
+  test-connection:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          # Add the server's public fingerprint to known_hosts
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Create Test File on Server
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+            # 1. Create a safe temporary directory
+            mkdir -p /tmp/github-test
+            
+            # 2. Write a message with the current server timestamp
+            echo "SUCCESS: The GitHub bot authenticated successfully at $(date)" > /tmp/github-test/hello.txt
+            
+            # 3. Output the contents so you can see it in the GitHub Actions log
+            echo "--- Server Output ---"
+            cat /tmp/github-test/hello.txt
+            echo "---------------------"
+          EOF
