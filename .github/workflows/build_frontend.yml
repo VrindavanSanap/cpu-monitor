@@ -24,3 +24,17 @@ jobs:
           cd frontend
           bun install
           bun run build
+        
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          # Add the server's public fingerprint to known_hosts
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+      
+      - name: deploy frontend to server
+        run: |
+          scp -r frontend/dist/* ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:/var/www/cpu-monitor
+        
+      
