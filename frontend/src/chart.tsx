@@ -1,7 +1,6 @@
 import {
 	Axis,
 	Grid,
-	LineSeries,
 	XYChart,
 	Tooltip,
 	AreaSeries
