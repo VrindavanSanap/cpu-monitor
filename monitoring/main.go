@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"math"
 	"fmt"
 	"log/slog"
 	"os"
@@ -64,6 +65,7 @@ func runCPUWorker(ctx context.Context, dbClient *APIClient, interval time.Durati
 			return ctx.Err()
 		case <-ticker.C:
 			percent, err := cpu.Percent(0, false)
+			percent[0] = math.Round(percent[0]*100) / 100
 			if err != nil {
 				slog.Error("Failed to read CPU percent", "error", err)
 				continue // don't stop the whole service on a single bad read
@@ -81,7 +83,7 @@ func runCPUWorker(ctx context.Context, dbClient *APIClient, interval time.Durati
 				// continue anyway — we don't want one DB hiccup to kill the monitor
 			} else {
 				slog.Info("Stored CPU utilisation",
-					"percent", fmt.Sprintf("%.2f%%", util.Val),
+					"percent", fmt.Sprintf("%f", util.Val),
 				)
 			}
 		}

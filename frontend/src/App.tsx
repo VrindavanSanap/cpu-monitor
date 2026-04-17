@@ -1,42 +1,36 @@
-import { useCpuHistory } from './hooks/useCpuHistory'
-import CpuChart from './components/CpuChart'
-import './App.css'
+import { useEffect, useState } from "react";
+import Chart from "./chart"; // no .tsx extension
 
-const MAX_POINTS = 60
+const BASE_URL = "https://cpu.vrindavansanap.com";
+const ENDPOINT = `${BASE_URL}/api/cpu`;
 
-export default function App() {
-  const { cpu, history, loading, error, isLive } = useCpuHistory(MAX_POINTS)
+function App() {
+  const [chartData, setChartData] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(ENDPOINT);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setChartData(data);
+      } catch (err) {
+        console.error("Failed to fetch CPU data:", err);
+      }
+    };
+
+    fetchData();
+    const intervalId = setInterval(fetchData, 1000);
+
+    return () => clearInterval(intervalId);
+  }, []);
 
   return (
-    <div className="app-shell">
-      <h1 className="app-title">CPU Monitor</h1>
-
-      {error && (
-        <p className="app-error" role="alert">
-          Failed to load data: {error.message}
-        </p>
-      )}
-
-      <div className="cpu-row">
-        <p className="cpu-value">
-          {loading ? '…' : cpu !== null ? `${cpu.toFixed(1)}%` : '—'}
-        </p>
-        <div
-          className={`status-indicator ${isLive ? 'live' : 'offline'}`}
-          aria-live="polite"
-          aria-label={isLive ? 'Status: Live' : 'Status: Offline'}
-        >
-          <span className="dot" />
-          <span className="text">{isLive ? 'LIVE' : 'OFFLINE'}</span>
-        </div>
-      </div>
-
-      <p className="idle-value">
-        Idle:&nbsp;
-        {loading ? '…' : cpu !== null ? `${(100 - cpu).toFixed(1)}%` : '—'}
-      </p>
-
-      <CpuChart history={history} />
+    <div>
+      <div>CPU Utilisation (Last 1 min)</div>
+      <Chart data={chartData} />
     </div>
-  )
+  );
 }
+
+export default App;

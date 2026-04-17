@@ -48,6 +48,7 @@ func (s *server) handleCPU(w http.ResponseWriter, r *http.Request) {
 	case http.MethodOptions:
 		w.WriteHeader(http.StatusNoContent)
 	case http.MethodGet:
+		s.buf.evict()
 		writeJSON(w, http.StatusOK, s.buf.snapshot())
 	case http.MethodPost:
 		s.postCPU(w, r)
